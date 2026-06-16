@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('gd_user');
         setToken(null);
         setUser(null);
-        window.location.href = 'https://www.smartprep.live/login';
+        window.location.href = 'https://smartprep.live/login';
     };
 
     const updateUser = (userData) => {
