@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+﻿import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, BarChart3, LogOut, MessageSquare, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,7 +18,7 @@ export default function Sidebar() {
 
     const handleLogout = () => {
         logout();
-        window.location.href = 'https://smartprep.live/login';
+        window.location.href = 'https://www.smartprep.live/login';
     };
 
     const initials = user?.name
@@ -129,3 +129,4 @@ export default function Sidebar() {
         </aside>
     );
 }
+

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+﻿import { createContext, useContext, useState, useEffect } from 'react';
 import API from '../api/axios';
 
 const AuthContext = createContext(null);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('gd_user');
         setToken(null);
         setUser(null);
-        window.location.href = 'https://smartprep.live/login';
+        window.location.href = 'https://www.smartprep.live/login';
     };
 
     const updateUser = (userData) => {
@@ -53,3 +53,4 @@ export function AuthProvider({ children }) {
         </AuthContext.Provider>
     );
 }
+
