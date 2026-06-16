@@ -33,7 +33,7 @@ function ProtectedRoute({ children }) {
             <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-4">You must be logged in to view this page.</p>
             <button 
-                onClick={() => window.location.href = 'http://localhost:5174/login'}
+                onClick={() => window.location.href = 'https://www.smartprep.live/login'}
                 className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
             >
                 Return to Central Hub
