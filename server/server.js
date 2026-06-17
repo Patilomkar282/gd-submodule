@@ -28,10 +28,19 @@ const feedbackRoutes = require('./routes/feedback');
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'https://interview.smartprep.live',
+    'https://alumini.smartprep.live',
+    'https://gd.smartprep.live',
+    'https://www.smartprep.live',
+    'http://localhost:5173'
+].filter(Boolean);
+
 // Socket.IO for real-time admin alerts
 const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        origin: allowedOrigins,
         credentials: true,
     },
 });
@@ -42,7 +51,7 @@ setIO(io);
 
 // ─── Middleware ─────────────────────────────────────────────
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
 }));
 app.use(express.json());
