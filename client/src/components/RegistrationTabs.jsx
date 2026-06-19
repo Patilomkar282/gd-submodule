@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, X, CheckCircle2, Video, AlertCircle, Loader2 } from 'lucide-react';
+import { Clock, Users, X, CheckCircle2, Video, AlertCircle, Loader2, FileText } from 'lucide-react';
 import API from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegistrationTabs({ registrations = [], onRefresh }) {
+    const { user } = useAuth();
     const [tab, setTab] = useState('active');
     const [cancelling, setCancelling] = useState(null);
+    const [selectedReportId, setSelectedReportId] = useState(null);
     const navigate = useNavigate();
     const now = new Date();
 
@@ -240,7 +243,7 @@ export default function RegistrationTabs({ registrations = [], onRefresh }) {
                         ) : completed.map((item) => (
                             <div
                                 key={item.room?._id || item.slot._id}
-                                className="card p-5 space-y-3 opacity-80"
+                                className="card p-5 space-y-3 opacity-90 hover:opacity-100 transition-opacity"
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <h4 className="font-bold text-base" style={{ color: 'var(--text-secondary)' }}>
@@ -251,21 +254,34 @@ export default function RegistrationTabs({ registrations = [], onRefresh }) {
                                         Done
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-4 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                                    <span className="flex items-center gap-1.5">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        {new Date(item.slot.startTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                        Feedback submitted
-                                    </span>
+                                <div className="flex items-center justify-between pt-2">
+                                    <div className="flex items-center gap-4 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            {new Date(item.slot.startTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                            Completed
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedReportId(item.room?._id)}
+                                        disabled={!item.room?._id}
+                                        className="text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                        <FileText className="w-3.5 h-3.5" /> View Report
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </motion.div>
                 )}
             </AnimatePresence>
+            
+            {selectedReportId && (
+                <ReportModal roomId={selectedReportId} onClose={() => setSelectedReportId(null)} user={user} />
+            )}
         </div>
     );
 }
@@ -279,6 +295,132 @@ function EmptyState({ icon: Icon, message, sub }) {
             </div>
             <p className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{message}</p>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{sub}</p>
+        </div>
+    );
+}
+
+function ReportModal({ roomId, onClose, user }) {
+    const [loading, setLoading] = useState(true);
+    const [analysis, setAnalysis] = useState(null);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        API.get(`/rooms/${roomId}`)
+            .then(res => {
+                const room = res.data.room;
+                if (!room.participantAnalysis || room.participantAnalysis.length === 0) {
+                    setError('Analysis not available yet. Please check back later.');
+                    return;
+                }
+                const myAnalysis = room.participantAnalysis.find(a => String(a.userId) === String(user._id) || String(a.userId?._id) === String(user._id));
+                if (!myAnalysis) {
+                    setError('No performance report found for you in this session.');
+                    return;
+                }
+                setAnalysis({ ...myAnalysis, overallSummary: room.overallSummary });
+            })
+            .catch(err => setError('Failed to load report. It may still be processing.'))
+            .finally(() => setLoading(false));
+    }, [roomId, user._id]);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="bg-white rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-gray-100"
+            >
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                            <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-extrabold text-lg text-gray-900 tracking-tight">AI Performance Report</h3>
+                            <p className="text-xs font-medium text-gray-500">Individual Feedback Summary</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-gray-200 bg-gray-100 text-gray-500 rounded-full transition-colors">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto custom-scrollbar">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-4">
+                            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                            <p className="text-sm font-semibold text-gray-500">Retrieving your analysis...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-16 bg-gray-50 rounded-2xl border border-gray-100">
+                            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                            <p className="text-sm font-bold text-gray-800">{error}</p>
+                            <p className="text-xs text-gray-500 mt-2">Analysis takes a few minutes after the session ends.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-lg shadow-indigo-200 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-2xl transform -translate-x-10 translate-y-10"></div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 mb-2 z-10">Overall Score</p>
+                                <div className="text-6xl font-black z-10 drop-shadow-md">
+                                    {analysis.performanceScore} <span className="text-2xl text-indigo-300">/ 10</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs">💡</span>
+                                    Feedback Summary
+                                </h4>
+                                <p className="text-sm text-gray-700 leading-relaxed p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                                    {analysis.summary || 'No detailed feedback provided.'}
+                                </p>
+                            </div>
+
+                            {analysis.flags?.length > 0 && (
+                                <div>
+                                    <h4 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs">🎯</span>
+                                        Areas of Note
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {analysis.flags.map((f, i) => (
+                                            <span key={i} className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white text-gray-700 border border-gray-200 shadow-sm">
+                                                {f}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {(analysis.isOffTopic || analysis.isMisbehaving) && (
+                                <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                                    <h4 className="font-bold text-sm text-red-800 mb-2 flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4" /> Behavioral Alerts
+                                    </h4>
+                                    <ul className="text-xs font-medium text-red-700 space-y-1.5 list-disc list-inside">
+                                        {analysis.isOffTopic && <li>You strayed off-topic during the discussion.</li>}
+                                        {analysis.isMisbehaving && <li>Inappropriate language or behavior was flagged.</li>}
+                                    </ul>
+                                </div>
+                            )}
+                            
+                            {analysis.overallSummary && (
+                                <div>
+                                    <h4 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs">📊</span>
+                                        Group Performance Overview
+                                    </h4>
+                                    <p className="text-sm text-gray-700 leading-relaxed p-5 bg-purple-50/50 rounded-2xl border border-purple-100/50">
+                                        {analysis.overallSummary}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 }
